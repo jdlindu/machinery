@@ -37,6 +37,7 @@ type TaskState struct {
 // E.g. UUIDs of all tasks which are used in order to check if all tasks
 // completed successfully or not and thus whether to trigger chord callback
 type GroupMeta struct {
+	Meta           map[string]string
 	GroupUUID      string    `bson:"_id"`
 	TaskUUIDs      []string  `bson:"task_uuids"`
 	ChordTriggered bool      `bson:"chord_triggered"`

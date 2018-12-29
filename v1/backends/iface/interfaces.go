@@ -7,7 +7,7 @@ import (
 // Backend - a common interface for all result backends
 type Backend interface {
 	// Group related functions
-	InitGroup(groupUUID string, taskUUIDs []string) error
+	InitGroup(groupUUID string, meta map[string]string, taskUUIDs []string) error
 	GroupCompleted(groupUUID string, groupTaskCount int) (bool, error)
 	GroupTaskStates(groupUUID string, groupTaskCount int) ([]*tasks.TaskState, error)
 	TriggerChord(groupUUID string) (bool, error)

@@ -336,7 +336,8 @@ func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Cha
 
 func (server *Server) SendGroupChain(groupInGroup *tasks.GroupInGruop) (string, error) {
 
-	server.backend.InitGroup(groupInGroup.GroupUUID, groupInGroup.TaskUUIDs)
+	fmt.Println(groupInGroup)
+	server.backend.InitGroup(groupInGroup.GroupUUID, groupInGroup.Meta, groupInGroup.TaskUUIDs)
 
 	for _, chain := range groupInGroup.Chains {
 		_, err := server.SendChain(chain)
@@ -351,7 +352,7 @@ func (server *Server) SendGroupChain(groupInGroup *tasks.GroupInGruop) (string, 
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
 	chainGroup := chain.Group
-	server.backend.InitGroup(chainGroup.GroupUUID, chainGroup.GetUUIDs())
+	server.backend.InitGroup(chainGroup.GroupUUID, chainGroup.Meta, chainGroup.GetUUIDs())
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
@@ -383,8 +384,9 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*res
 	wg.Add(len(group.Tasks))
 	errorsChan := make(chan error, len(group.Tasks)*2)
 
+	meta := make(map[string]string)
 	// Init group
-	server.backend.InitGroup(group.GroupUUID, group.GetUUIDs())
+	server.backend.InitGroup(group.GroupUUID, meta, group.GetUUIDs())
 
 	// Init the tasks Pending state first
 	for _, signature := range group.Tasks {

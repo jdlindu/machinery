@@ -235,17 +235,17 @@ func send() error {
 	signature3.RetryCount = 100
 	signature3.RetryTimeout = 2
 
-	chain, err := tasks.NewChain("1.1.1.1上架任务", signature1, signature2, signature3)
+	chain, err := tasks.NewChain(map[string]string{"task": "1.1.1.1上架任务", "ip": "1.1.1.1"}, signature1, signature2, signature3)
 	if err != nil {
 		panic(err)
 	}
-	chain2, err := tasks.NewChain("2.2.2.2上架任务", signature4, signature5)
+	chain2, err := tasks.NewChain(map[string]string{"task": "1.1.1.1上架任务", "ip": "2.2.2.2"}, signature4, signature5)
 
 	if err != nil {
 		panic(err)
 	}
 
-	chainGroups, err := tasks.NewChainTasks("上架任务", chain, chain2)
+	chainGroups, err := tasks.NewChainTasks(map[string]string{"task": "批量上架任务"}, chain, chain2)
 	if err != nil {
 		panic(err)
 	}

@@ -13,11 +13,13 @@ type Chain struct {
 
 // Group creates a set of tasks to be executed in parallel
 type Group struct {
+	Meta      map[string]string
 	GroupUUID string
 	Tasks     []*Signature
 }
 
 type GroupInGruop struct {
+	Meta      map[string]string
 	GroupUUID string
 	TaskUUIDs []string
 	Chains    []*Chain
@@ -41,8 +43,8 @@ func (group *Group) GetUUIDs() []string {
 
 // NewChain creates a new chain of tasks to be processed one by one, passing
 // results unless task signatures are set to be immutable
-func NewChain(instanceName string, signatures ...*Signature) (*Chain, error) {
-	group, err := NewChainGroup(signatures...)
+func NewChain(meta map[string]string, signatures ...*Signature) (*Chain, error) {
+	group, err := NewChainGroup(meta, signatures...)
 	if err != nil {
 		return nil, fmt.Errorf("new chain group failed")
 	}
@@ -59,7 +61,6 @@ func NewChain(instanceName string, signatures ...*Signature) (*Chain, error) {
 		}
 		signature.Step = idx + 1
 		signature.TotalStep = totalStep
-		signature.InstanceName = instanceName
 		signature.ChainUUID = group.GroupUUID
 		signature.ChainCount = len(signatures)
 
@@ -98,30 +99,29 @@ func NewGroup(signatures ...*Signature) (*Group, error) {
 	}, nil
 }
 
-func NewChainGroup(signatures ...*Signature) (*Group, error) {
+func NewChainGroup(meta map[string]string, signatures ...*Signature) (*Group, error) {
 	// Generate a group UUID
 	groupUUID := uuid.New().String()
 	groupID := fmt.Sprintf("group_%v", groupUUID)
 
 	return &Group{
+		Meta:      meta,
 		GroupUUID: groupID,
 		Tasks:     signatures,
 	}, nil
 }
 
-func NewChainTasks(taskName string, chains ...*Chain) (*GroupInGruop, error) {
+func NewChainTasks(meta map[string]string, chains ...*Chain) (*GroupInGruop, error) {
 	// Generate a group UUID
 	groupUUID := uuid.New().String()
 	groupID := fmt.Sprintf("group_%v", groupUUID)
 
 	var taskUUIDs []string
 	for _, chain := range chains {
-		for _, sign := range chain.Group.Tasks {
-			sign.TaskName = taskName
-		}
 		taskUUIDs = append(taskUUIDs, chain.Group.GroupUUID)
 	}
 	return &GroupInGruop{
+		Meta:      meta,
 		GroupUUID: groupID,
 		TaskUUIDs: taskUUIDs,
 		Chains:    chains,
@@ -147,6 +147,7 @@ func NewChord(group *Group, callback *Signature) (*Chord, error) {
 
 type GroupStates struct {
 	GroupUUID  string
+	Meta       map[string]string
 	Signatures []*Signature
 	States     []*TaskState
 }
@@ -174,6 +175,7 @@ func (group *GroupStates) CurrentState() (*TaskState, error) {
 
 func (group *GroupStates) String() string {
 	var msg string
+	fmt.Sprintf("meta: %v\n", group.Meta)
 	for idx, s := range group.States {
 		msg += fmt.Sprintf("step:%d/%d task_id:%s job: %s, stepName: %s, state: %s\n", idx+1, s.Signature.ChainCount, s.TaskUUID, s.TaskName, s.Signature.StepName, s.State)
 	}
@@ -182,6 +184,7 @@ func (group *GroupStates) String() string {
 
 type ChainTasksStates struct {
 	GroupUUID       string
+	Meta            map[string]string
 	GroupStatesList []GroupStates
 }
 
@@ -210,8 +213,9 @@ func (group *ChainTasksStates) CurrentState() map[string]*TaskState {
 
 func (group *ChainTasksStates) String() string {
 	var msg string
+	msg += fmt.Sprintf("task group id:%s, meta:%v \n", group.GroupUUID, group.Meta)
 	for _, chainGroup := range group.GroupStatesList {
-		msg += fmt.Sprintf("chainid:%s\n", chainGroup.GroupUUID)
+		msg += fmt.Sprintf("chainid:%s, meta:%v \n", chainGroup.GroupUUID, chainGroup.Meta)
 		for idx, s := range chainGroup.States {
 			msg += fmt.Sprintf("step:%d/%d task_id:%s job: %s, stepName: %s, state: %s, error: %s\n", idx+1, s.Signature.ChainCount, s.TaskUUID, s.TaskName, s.Signature.StepName, s.State, s.Error)
 		}

@@ -41,8 +41,9 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Ba
 }
 
 // InitGroup creates and saves a group meta data object
-func (b *Backend) InitGroup(groupUUID string, taskUUIDs []string) error {
+func (b *Backend) InitGroup(groupUUID string, meta map[string]string, taskUUIDs []string) error {
 	groupMeta := &tasks.GroupMeta{
+		Meta:      meta,
 		GroupUUID: groupUUID,
 		TaskUUIDs: taskUUIDs,
 		CreatedAt: time.Now().UTC(),
@@ -93,6 +94,7 @@ func (b *Backend) ChainTasksStates(groupUUID string) (tasks.ChainTasksStates, er
 		return tasksStates, err
 	}
 
+	tasksStates.Meta = groupMeta.Meta
 	for _, taskUUID := range groupMeta.TaskUUIDs {
 		if !strings.HasPrefix(taskUUID, "group_") {
 			return tasksStates, fmt.Errorf("not task group id, retry with instance query api")
@@ -115,6 +117,7 @@ func (b *Backend) ChainTaskStates(groupUUID string) (tasks.GroupStates, error) {
 		return groupStates, err
 	}
 
+	groupStates.Meta = groupMeta.Meta
 	firstTaskUUID := groupMeta.TaskUUIDs[0]
 	if strings.HasPrefix(firstTaskUUID, "group_") {
 		return groupStates, fmt.Errorf("not task instance id, retry with group task query api")
