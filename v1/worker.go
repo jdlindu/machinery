@@ -201,6 +201,8 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	// Decrement the retry counter, when it reaches 0, we won't retry again
 	signature.RetryCount--
 
+	signature.RetriedTimes++
+
 	// Increase retry timeout
 	signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
 

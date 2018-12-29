@@ -62,6 +62,7 @@ type Signature struct {
 	ReceivePipe    bool
 	RetryCount     int
 	RetryTimeout   int
+	RetriedTimes   int
 	ErrorExit      string
 	OnSuccess      []*Signature
 	OnError        []*Signature
