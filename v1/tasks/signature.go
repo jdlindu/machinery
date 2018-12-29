@@ -45,8 +45,7 @@ func (h Headers) ForeachKey(handler func(key, val string) error) error {
 type Signature struct {
 	UUID           string
 	Name           string
-	TaskName       string
-	InstanceName   string
+	Meta           map[string]string
 	StepName       string
 	Step           int
 	TotalStep      int
@@ -82,19 +81,20 @@ func NewSignature(name string, args []Arg) (*Signature, error) {
 	}, nil
 }
 
-func NewJob(name, stepName string, args ...Arg) *Signature {
+func NewJob(name, stepName string, meta map[string]string, args ...Arg) *Signature {
 	signatureID := uuid.New().String()
 	return &Signature{
 		UUID:      fmt.Sprintf("task_%v", signatureID),
 		Name:      name,
+		Meta:      meta,
 		StepName:  stepName,
 		Immutable: true,
 		Args:      args,
 	}
 }
 
-func NewPipeJob(name, stepName string, args ...Arg) *Signature {
-	job := NewJob(name, stepName, args...)
+func NewPipeJob(name, stepName string, meta map[string]string, args ...Arg) *Signature {
+	job := NewJob(name, stepName, meta, args...)
 	job.ReceivePipe = true
 	return job
 }

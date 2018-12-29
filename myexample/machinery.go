@@ -224,14 +224,16 @@ func send() error {
 		return err
 	}
 
-	signature1 := tasks.NewJob("echo", "环境初始化", tasks.NewIntArg(2), tasks.NewStringArg("初始化参数"))
+	meta := make(map[string]string)
+	meta["xxx"] = "step meta"
+	signature1 := tasks.NewJob("echo", "环境初始化", meta, tasks.NewIntArg(2), tasks.NewStringArg("初始化参数"))
 	signature1.RetryCount = 10
-	signature2 := tasks.NewJob("echo", "发起装包", tasks.NewIntArg(1), tasks.NewStringArg("query"))
+	signature2 := tasks.NewJob("echo", "发起装包", meta, tasks.NewIntArg(1), tasks.NewStringArg("query"))
 	signature2.RetryCount = 100
-	signature3 := tasks.NewPipeJob("echo", "装包任务查询", tasks.NewIntArg(5))
-	signature4 := tasks.NewJob("echo", "装包任务查询", tasks.NewIntArg(4))
+	signature3 := tasks.NewPipeJob("echo", "装包任务查询", meta, tasks.NewIntArg(5))
+	signature4 := tasks.NewJob("echo", "装包任务查询", meta, tasks.NewIntArg(4))
 	signature4.RetryCount = 100
-	signature5 := tasks.NewPipeJob("echo", "装包任务查询", tasks.NewIntArg(6))
+	signature5 := tasks.NewPipeJob("echo", "装包任务查询", meta, tasks.NewIntArg(6))
 	signature3.RetryCount = 100
 	signature3.RetryTimeout = 2
 

@@ -217,7 +217,7 @@ func (group *ChainTasksStates) String() string {
 	for _, chainGroup := range group.GroupStatesList {
 		msg += fmt.Sprintf("chainid:%s, meta:%v \n", chainGroup.GroupUUID, chainGroup.Meta)
 		for idx, s := range chainGroup.States {
-			msg += fmt.Sprintf("step:%d/%d task_id:%s job: %s, stepName: %s, state: %s, error: %s\n", idx+1, s.Signature.ChainCount, s.TaskUUID, s.TaskName, s.Signature.StepName, s.State, s.Error)
+			msg += fmt.Sprintf("step:%d/%d task_id:%s job: %s, stepName: %s, meta: %v, state: %s, error: %s\n", idx+1, s.Signature.ChainCount, s.TaskUUID, s.TaskName, s.Signature.StepName, s.Signature.Meta, s.State, s.Error)
 		}
 		msg += "\n"
 	}
