@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/backends/iface"
@@ -75,14 +76,88 @@ func (b *Backend) GroupCompleted(groupUUID string, groupTaskCount int) (bool, er
 		return false, err
 	}
 
-	var countSuccessTasks = 0
 	for _, taskState := range taskStates {
-		if taskState.IsCompleted() {
-			countSuccessTasks++
+		if !taskState.IsCompleted() {
+			return false, nil
 		}
 	}
 
-	return countSuccessTasks == groupTaskCount, nil
+	return true, nil
+}
+
+func (b *Backend) ChainTasksStates(groupUUID string) (tasks.ChainTasksStates, error) {
+	var tasksStates tasks.ChainTasksStates
+	tasksStates.GroupUUID = groupUUID
+	groupMeta, err := b.getGroupMeta(groupUUID)
+	if err != nil {
+		return tasksStates, err
+	}
+
+	for _, taskUUID := range groupMeta.TaskUUIDs {
+		if !strings.HasPrefix(taskUUID, "group_") {
+			return tasksStates, fmt.Errorf("not task group id, retry with instance query api")
+		}
+		groupStates, err := b.ChainTaskStates(taskUUID)
+		if err != nil {
+			return tasksStates, err
+		}
+
+		tasksStates.GroupStatesList = append(tasksStates.GroupStatesList, groupStates)
+	}
+	return tasksStates, nil
+}
+
+func (b *Backend) ChainTaskStates(groupUUID string) (tasks.GroupStates, error) {
+	var groupStates tasks.GroupStates
+	groupStates.GroupUUID = groupUUID
+	groupMeta, err := b.getGroupMeta(groupUUID)
+	if err != nil {
+		return groupStates, err
+	}
+
+	firstTaskUUID := groupMeta.TaskUUIDs[0]
+	if strings.HasPrefix(firstTaskUUID, "group_") {
+		return groupStates, fmt.Errorf("not task instance id, retry with group task query api")
+	}
+
+	state, err := b.GetState(firstTaskUUID)
+	if err != nil && err != redis.ErrNil {
+		return groupStates, err
+	}
+
+	if state.Signature == nil {
+		return groupStates, fmt.Errorf("state signature nil")
+	}
+
+	var signatures []*tasks.Signature
+	signatures = append(signatures, state.Signature)
+
+	getSign := func(sign *tasks.Signature) *tasks.Signature {
+		if len(sign.OnSuccess) > 0 {
+			return sign.OnSuccess[0]
+		}
+		return nil
+	}
+
+	for sign := getSign(state.Signature); sign != nil; sign = getSign(sign) {
+		signatures = append(signatures, sign)
+	}
+
+	var states []*tasks.TaskState
+	for idx, taskUUID := range groupMeta.TaskUUIDs {
+
+		state, err := b.GetState(taskUUID)
+		if err != nil && err != redis.ErrNil {
+			return groupStates, err
+		} else if err == redis.ErrNil {
+			// chain task 未提交的任务
+			states = append(states, tasks.NewNonExistTaskState(signatures[idx]))
+		} else {
+			states = append(states, state)
+		}
+	}
+	groupStates.States = states
+	return groupStates, nil
 }
 
 // GroupTaskStates returns states of all tasks in the group
@@ -336,4 +411,54 @@ func (b *Backend) open() redis.Conn {
 		b.redsync = redsync.New(pools)
 	}
 	return b.pool.Get()
+}
+
+func (b *Backend) CancelTask(signature *tasks.Signature) error {
+	cancelSignatureKey := fmt.Sprintf("cancel_%s", signature.UUID)
+	conn := b.open()
+	defer conn.Close()
+
+	_, err := conn.Do("SETEX", cancelSignatureKey, 60*60*24, 1)
+
+	if err != nil {
+		return err
+	}
+
+	return b.SetStateCanceled(signature)
+}
+
+func (b *Backend) UnCancelTask(signature *tasks.Signature) error {
+	cancelSignatureKey := fmt.Sprintf("cancel_%s", signature.UUID)
+	conn := b.open()
+	defer conn.Close()
+
+	_, err := conn.Do("DEL", cancelSignatureKey)
+
+	if err != nil {
+		return err
+	}
+
+	return b.SetStatePending(signature)
+}
+
+func (b *Backend) TaskHadCanceled(taskUUID string) bool {
+	cancelSignatureKey := fmt.Sprintf("cancel_%s", taskUUID)
+	conn := b.open()
+	defer conn.Close()
+
+	_, err := redis.Bytes(conn.Do("GET", cancelSignatureKey))
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func (b *Backend) SetStateCanceled(signature *tasks.Signature) error {
+	taskState := tasks.NewCanceledTaskState(signature)
+	return b.updateState(taskState)
+}
+
+func (b *Backend) SetStateSkipped(signature *tasks.Signature) error {
+	taskState := tasks.NewSkippedTaskState(signature)
+	return b.updateState(taskState)
 }

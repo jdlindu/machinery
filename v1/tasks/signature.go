@@ -45,15 +45,24 @@ func (h Headers) ForeachKey(handler func(key, val string) error) error {
 type Signature struct {
 	UUID           string
 	Name           string
+	TaskName       string
+	InstanceName   string
+	StepName       string
+	Step           int
+	TotalStep      int
 	RoutingKey     string
 	ETA            *time.Time
+	ChainUUID      string
+	ChainCount     int
 	GroupUUID      string
 	GroupTaskCount int
 	Args           []Arg
 	Headers        Headers
 	Immutable      bool
+	ReceivePipe    bool
 	RetryCount     int
 	RetryTimeout   int
+	ErrorExit      string
 	OnSuccess      []*Signature
 	OnError        []*Signature
 	ChordCallback  *Signature
@@ -65,8 +74,40 @@ type Signature struct {
 func NewSignature(name string, args []Arg) (*Signature, error) {
 	signatureID := uuid.New().String()
 	return &Signature{
-		UUID: fmt.Sprintf("task_%v", signatureID),
-		Name: name,
-		Args: args,
+		UUID:      fmt.Sprintf("task_%v", signatureID),
+		Name:      name,
+		Immutable: true,
+		Args:      args,
 	}, nil
+}
+
+func NewJob(name, stepName string, args ...Arg) *Signature {
+	signatureID := uuid.New().String()
+	return &Signature{
+		UUID:      fmt.Sprintf("task_%v", signatureID),
+		Name:      name,
+		StepName:  stepName,
+		Immutable: true,
+		Args:      args,
+	}
+}
+
+func NewPipeJob(name, stepName string, args ...Arg) *Signature {
+	job := NewJob(name, stepName, args...)
+	job.ReceivePipe = true
+	return job
+}
+
+func NewIntArg(val int) Arg {
+	return Arg{
+		Type:  "int",
+		Value: val,
+	}
+}
+
+func NewStringArg(val string) Arg {
+	return Arg{
+		Type:  "string",
+		Value: val,
+	}
 }

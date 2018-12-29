@@ -192,27 +192,29 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 	// Adjust routing key (this decides which queue the message will be published to)
 	b.Broker.AdjustRoutingKey(signature)
 
-	msg, err := json.Marshal(signature)
-	if err != nil {
-		return fmt.Errorf("JSON marshal error: %s", err)
-	}
+	var err error
 
 	conn := b.open()
 	defer conn.Close()
 
-	// Check the ETA signature field, if it is set and it is in the future,
-	// delay the task
-	if signature.ETA != nil {
-		now := time.Now().UTC()
-
-		if signature.ETA.After(now) {
-			score := signature.ETA.UnixNano()
-			_, err = conn.Do("ZADD", redisDelayedTasksKey, score, msg)
-			return err
-		}
+	// save original signature
+	err = b.SetSignature(signature)
+	if err != nil {
+		return err
 	}
 
-	_, err = conn.Do("RPUSH", signature.RoutingKey, msg)
+	// Check the ETA signature field, if it is set and it is in the future,
+	// delay the task
+
+	if signature.ETA != nil && signature.ETA.After(time.Now().UTC()) {
+		score := signature.ETA.UnixNano()
+		// 将延迟队列的值从signature替换为taskid,方便从延迟队列剔除任务
+		_, err = conn.Do("ZADD", redisDelayedTasksKey, score, signature.UUID)
+	} else {
+		// 将任务队列的值从signature替换为taskid,方便从队列剔除任务
+		_, err = conn.Do("RPUSH", signature.RoutingKey, signature.UUID)
+	}
+
 	return err
 }
 
@@ -323,9 +325,15 @@ func (b *Broker) nextTask(queue string) (result []byte, err error) {
 		return []byte{}, redis.ErrNil
 	}
 
-	result = items[1]
+	taskUUID := items[1]
+	key := fmt.Sprintf("signature-%s", taskUUID)
 
-	return result, nil
+	encoded, err := redis.Bytes(conn.Do("GET", key))
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return encoded, nil
 }
 
 // nextDelayedTask pops a value from the ZSET key using WATCH/MULTI/EXEC commands.
@@ -388,7 +396,13 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 		}
 
 		if reply != nil {
-			result = items[0]
+			taskUUID := items[0]
+			key := fmt.Sprintf("signature-%s", taskUUID)
+
+			result, err = redis.Bytes(conn.Do("GET", key))
+			if err != nil {
+				return
+			}
 			break
 		}
 	}
@@ -414,4 +428,53 @@ func getQueue(config *config.Config, taskProcessor iface.TaskProcessor) string {
 		return config.DefaultQueue
 	}
 	return customQueue
+}
+
+func (b *Broker) SetSignature(signature *tasks.Signature) error {
+	key := fmt.Sprintf("signature-%s", signature.UUID)
+	conn := b.open()
+	defer conn.Close()
+
+	encoded, err := json.Marshal(signature)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Do("SET", key, encoded)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Broker) GetSignature(taskUUID string) (*tasks.Signature, error) {
+	key := fmt.Sprintf("signature-%s", taskUUID)
+
+	fmt.Println(key)
+
+	conn := b.open()
+	defer conn.Close()
+
+	var signature = new(tasks.Signature)
+
+	item, err := redis.Bytes(conn.Do("GET", key))
+	if err != nil {
+		return signature, err
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(item))
+	decoder.UseNumber()
+	if err := decoder.Decode(signature); err != nil {
+		return signature, err
+	}
+
+	return signature, nil
+}
+
+func (b *Broker) RemoveDelayedTask(taskUUID string) error {
+	conn := b.open()
+	defer conn.Close()
+	_, err := conn.Do("ZREM", redisDelayedTasksKey, taskUUID)
+	return err
 }

@@ -2,19 +2,25 @@ package tasks
 
 import (
 	"fmt"
-
 	"github.com/google/uuid"
 )
 
 // Chain creates a chain of tasks to be executed one after another
 type Chain struct {
 	Tasks []*Signature
+	Group *Group
 }
 
 // Group creates a set of tasks to be executed in parallel
 type Group struct {
 	GroupUUID string
 	Tasks     []*Signature
+}
+
+type GroupInGruop struct {
+	GroupUUID string
+	TaskUUIDs []string
+	Chains    []*Chain
 }
 
 // Chord adds an optional callback to the group to be executed
@@ -35,13 +41,28 @@ func (group *Group) GetUUIDs() []string {
 
 // NewChain creates a new chain of tasks to be processed one by one, passing
 // results unless task signatures are set to be immutable
-func NewChain(signatures ...*Signature) (*Chain, error) {
+func NewChain(instanceName string, signatures ...*Signature) (*Chain, error) {
+	group, err := NewChainGroup(signatures...)
+	if err != nil {
+		return nil, fmt.Errorf("new chain group failed")
+	}
+
+	totalStep := len(signatures)
 	// Auto generate task UUIDs if needed
-	for _, signature := range signatures {
+	for idx, signature := range signatures {
+		if idx == 0 && signature.ReceivePipe {
+			return nil, fmt.Errorf("第一个任务不能设置为接收上一步骤入参")
+		}
 		if signature.UUID == "" {
 			signatureID := uuid.New().String()
 			signature.UUID = fmt.Sprintf("task_%v", signatureID)
 		}
+		signature.Step = idx + 1
+		signature.TotalStep = totalStep
+		signature.InstanceName = instanceName
+		signature.ChainUUID = group.GroupUUID
+		signature.ChainCount = len(signatures)
+
 	}
 
 	for i := len(signatures) - 1; i > 0; i-- {
@@ -50,7 +71,7 @@ func NewChain(signatures ...*Signature) (*Chain, error) {
 		}
 	}
 
-	chain := &Chain{Tasks: signatures}
+	chain := &Chain{Tasks: signatures, Group: group}
 
 	return chain, nil
 }
@@ -77,6 +98,36 @@ func NewGroup(signatures ...*Signature) (*Group, error) {
 	}, nil
 }
 
+func NewChainGroup(signatures ...*Signature) (*Group, error) {
+	// Generate a group UUID
+	groupUUID := uuid.New().String()
+	groupID := fmt.Sprintf("group_%v", groupUUID)
+
+	return &Group{
+		GroupUUID: groupID,
+		Tasks:     signatures,
+	}, nil
+}
+
+func NewChainTasks(taskName string, chains ...*Chain) (*GroupInGruop, error) {
+	// Generate a group UUID
+	groupUUID := uuid.New().String()
+	groupID := fmt.Sprintf("group_%v", groupUUID)
+
+	var taskUUIDs []string
+	for _, chain := range chains {
+		for _, sign := range chain.Group.Tasks {
+			sign.TaskName = taskName
+		}
+		taskUUIDs = append(taskUUIDs, chain.Group.GroupUUID)
+	}
+	return &GroupInGruop{
+		GroupUUID: groupID,
+		TaskUUIDs: taskUUIDs,
+		Chains:    chains,
+	}, nil
+}
+
 // NewChord creates a new chord (a group of tasks with a single callback
 // to be executed after all tasks in the group has completed)
 func NewChord(group *Group, callback *Signature) (*Chord, error) {
@@ -92,4 +143,79 @@ func NewChord(group *Group, callback *Signature) (*Chord, error) {
 	}
 
 	return &Chord{Group: group, Callback: callback}, nil
+}
+
+type GroupStates struct {
+	GroupUUID  string
+	Signatures []*Signature
+	States     []*TaskState
+}
+
+func (group *GroupStates) IsCompleted() bool {
+	for _, s := range group.States {
+		if !s.IsCompleted() {
+			return false
+		}
+	}
+	return true
+}
+
+func (group *GroupStates) CurrentState() (*TaskState, error) {
+	if len(group.States) < 1 {
+		return nil, fmt.Errorf("task non exists")
+	}
+	for idx, s := range group.States {
+		if idx > 0 && s.IsNonExists() {
+			return group.States[idx-1], nil
+		}
+	}
+	return group.States[len(group.States)-1], nil
+}
+
+func (group *GroupStates) String() string {
+	var msg string
+	for idx, s := range group.States {
+		msg += fmt.Sprintf("step:%d/%d task_id:%s job: %s, stepName: %s, state: %s\n", idx+1, s.Signature.ChainCount, s.TaskUUID, s.TaskName, s.Signature.StepName, s.State)
+	}
+	return msg
+}
+
+type ChainTasksStates struct {
+	GroupUUID       string
+	GroupStatesList []GroupStates
+}
+
+func (group *ChainTasksStates) IsCompleted() bool {
+	for _, chainGroup := range group.GroupStatesList {
+		for _, s := range chainGroup.States {
+			if !s.IsCompleted() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (group *ChainTasksStates) CurrentState() map[string]*TaskState {
+	states := make(map[string]*TaskState)
+	for _, chainGroup := range group.GroupStatesList {
+		currentState, err := chainGroup.CurrentState()
+		if err != nil {
+			continue
+		}
+		states[currentState.Signature.ChainUUID] = currentState
+	}
+	return states
+}
+
+func (group *ChainTasksStates) String() string {
+	var msg string
+	for _, chainGroup := range group.GroupStatesList {
+		msg += fmt.Sprintf("chainid:%s\n", chainGroup.GroupUUID)
+		for idx, s := range chainGroup.States {
+			msg += fmt.Sprintf("step:%d/%d task_id:%s job: %s, stepName: %s, state: %s, error: %s\n", idx+1, s.Signature.ChainCount, s.TaskUUID, s.TaskName, s.Signature.StepName, s.State, s.Error)
+		}
+		msg += "\n"
+	}
+	return msg
 }

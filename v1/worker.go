@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/log"
 	"github.com/RichardKnop/machinery/v1/retry"
 	"github.com/RichardKnop/machinery/v1/tasks"
@@ -165,6 +164,10 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 		defer worker.postTaskHandler(signature)
 	}
 
+	if worker.server.GetBackend().TaskHadCanceled(signature.UUID) {
+		return worker.taskCancel(signature)
+	}
+
 	// Call the task
 	results, err := task.Call()
 	if err != nil {
@@ -177,6 +180,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 
 		// Otherwise, execute default retry logic based on signature.RetryCount
 		// and signature.RetryTimeout values
+		log.WARNING.Printf("Task %s failed. retry count=%d", signature.UUID, signature.RetryCount)
 		if signature.RetryCount > 0 {
 			return worker.taskRetry(signature)
 		}
@@ -250,7 +254,7 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	// Trigger success callbacks
 
 	for _, successTask := range signature.OnSuccess {
-		if signature.Immutable == false {
+		if signature.Immutable == false || successTask.ReceivePipe {
 			// Pass results of the task to success callbacks
 			for _, taskResult := range taskResults {
 				successTask.Args = append(successTask.Args, tasks.Arg{
@@ -280,11 +284,6 @@ func (worker *Worker) taskSucceeded(signature *tasks.Signature, taskResults []*t
 	// If the group has not yet completed, just return
 	if !groupCompleted {
 		return nil
-	}
-
-	// Defer purging of group meta queue if we are using AMQP backend
-	if worker.hasAMQPBackend() {
-		defer worker.server.GetBackend().PurgeGroupMeta(signature.GroupUUID)
 	}
 
 	// There is no chord callback, just return
@@ -351,13 +350,18 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 		log.ERROR.Printf("Failed processing task %s. Error = %v", signature.UUID, taskErr)
 	}
 
+	signature.ErrorExit = taskErr.Error()
+
+	err := worker.server.GetBroker().SetSignature(signature)
+
+	if err != nil {
+		log.ERROR.Printf("Failed save error task %s. Error = %v", signature.UUID, err)
+	}
+
 	// Trigger error callbacks
 	for _, errorTask := range signature.OnError {
 		// Pass error as a first argument to error callbacks
-		args := append([]tasks.Arg{{
-			Type:  "string",
-			Value: taskErr.Error(),
-		}}, errorTask.Args...)
+		args := append([]tasks.Arg{{Type: "string", Value: taskErr.Error()}}, errorTask.Args...)
 		errorTask.Args = args
 		worker.server.SendTask(errorTask)
 	}
@@ -365,10 +369,8 @@ func (worker *Worker) taskFailed(signature *tasks.Signature, taskErr error) erro
 	return nil
 }
 
-// Returns true if the worker uses AMQP backend
-func (worker *Worker) hasAMQPBackend() bool {
-	_, ok := worker.server.GetBackend().(*amqp.Backend)
-	return ok
+func (worker *Worker) taskCancel(signature *tasks.Signature) error {
+	return worker.server.GetBackend().SetStateCanceled(signature)
 }
 
 // SetErrorHandler sets a custom error handler for task errors

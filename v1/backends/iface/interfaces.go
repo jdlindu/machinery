@@ -25,4 +25,12 @@ type Backend interface {
 	IsAMQP() bool
 	PurgeState(taskUUID string) error
 	PurgeGroupMeta(groupUUID string) error
+
+	CancelTask(signature *tasks.Signature) error
+	UnCancelTask(signature *tasks.Signature) error
+	TaskHadCanceled(taskUUID string) bool
+	SetStateCanceled(signature *tasks.Signature) error
+	SetStateSkipped(signature *tasks.Signature) error
+	ChainTaskStates(groupUUID string) (tasks.GroupStates, error)
+	ChainTasksStates(groupUUID string) (tasks.ChainTasksStates, error)
 }

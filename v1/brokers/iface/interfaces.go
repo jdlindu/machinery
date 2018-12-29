@@ -15,6 +15,10 @@ type Broker interface {
 	Publish(task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
 	AdjustRoutingKey(s *tasks.Signature)
+
+	RemoveDelayedTask(taskUUID string) error
+	SetSignature(signature *tasks.Signature) error
+	GetSignature(taskUUID string) (*tasks.Signature, error)
 }
 
 // TaskProcessor - can process a delivered task

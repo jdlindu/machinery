@@ -4,18 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-
 	"github.com/RichardKnop/machinery/v1/backends/result"
-	"github.com/RichardKnop/machinery/v1/brokers/eager"
 	"github.com/RichardKnop/machinery/v1/config"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
+	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
+	"sync"
 
 	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -49,13 +48,6 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	backend, _ := BackendFactory(cnf)
 
 	srv := NewServerWithBrokerBackend(cnf, broker, backend)
-
-	// init for eager-mode
-	eager, ok := broker.(eager.Mode)
-	if ok {
-		// we don't have to call worker.Launch in eager mode
-		eager.AssignWorker(srv.NewWorker("eager", 0))
-	}
 
 	return srv, nil
 }
@@ -193,6 +185,145 @@ func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult,
 	return result.NewAsyncResult(signature, server.backend), nil
 }
 
+func (server *Server) GetChainTaskStatus(groupUUID string) (tasks.GroupStates, error) {
+	return server.GetBackend().ChainTaskStates(groupUUID)
+}
+
+func (server *Server) GetChainTasksStatus(groupUUID string) (tasks.ChainTasksStates, error) {
+	return server.GetBackend().ChainTasksStates(groupUUID)
+}
+
+func (server *Server) RetryTask(taskUUID string) error {
+	state, err := server.GetBackend().GetState(taskUUID)
+	if err != nil {
+		return fmt.Errorf("task state not found, cannot retry")
+	}
+
+	if !state.IsRetryable() {
+		return fmt.Errorf("task in state %s, cannot retry", state.State)
+	}
+
+	sign, err := server.GetBroker().GetSignature(taskUUID)
+	if err != nil {
+		return fmt.Errorf("task signature not found")
+	}
+
+	err = server.GetBackend().UnCancelTask(sign)
+	if err != nil {
+		return err
+	}
+
+	// reset retry timeout to retry immediately
+	sign.RetryTimeout = 0
+	_, err = server.SendTask(sign)
+	return err
+}
+
+func (server *Server) RetryChainTask(groupUUID string) error {
+	groupStates, err := server.GetBackend().ChainTaskStates(groupUUID)
+	if err != nil {
+		return err
+	}
+	currentState, err := groupStates.CurrentState()
+	if err != nil {
+		return err
+	}
+	return server.RetryTask(currentState.TaskUUID)
+}
+
+func (server *Server) CancelChainTask(groupUUID string) error {
+	groupStates, err := server.GetBackend().ChainTaskStates(groupUUID)
+	if err != nil {
+		return err
+	}
+
+	// TODO: cancel pending task, 待测试
+	currentState, err := groupStates.CurrentState()
+	if err != nil {
+		return err
+	}
+	fmt.Println("cancel task ", currentState.TaskUUID, currentState.State)
+	return server.CancelTask(currentState.TaskUUID)
+}
+
+func (server *Server) CancelTask(taskUUID string) error {
+	taskState, err := server.GetBackend().GetState(taskUUID)
+	if err != nil && err != redis.ErrNil {
+		return err
+	} else if err == redis.ErrNil {
+		signature, err := server.GetBroker().GetSignature(taskUUID)
+		if err != nil {
+			return fmt.Errorf("task id %s not found", taskUUID)
+		}
+		taskState = tasks.NewNonExistTaskState(signature)
+	}
+	if !taskState.IsCancelable() {
+		return fmt.Errorf("task state: %s cannot cancel", taskState.State)
+	}
+	err = server.GetBroker().RemoveDelayedTask(taskUUID)
+	if err != nil {
+		return fmt.Errorf("delete task from delay queue failed")
+	}
+	return server.GetBackend().CancelTask(taskState.Signature)
+}
+
+func (server *Server) SkipAndContinueChainTask(groupUUID string) error {
+	groupStates, err := server.GetBackend().ChainTaskStates(groupUUID)
+	if err != nil {
+		return err
+	}
+
+	currentState, err := groupStates.CurrentState()
+	if err != nil {
+		return err
+	}
+
+	if currentState.State == tasks.StateSkipped {
+		return fmt.Errorf("already skipped")
+	}
+	fmt.Println("skip and continue chain, group: ", groupUUID, " task: ", currentState.TaskUUID)
+	return server.SkipAndContinueTask(currentState.TaskUUID)
+}
+
+func (server *Server) SkipAndContinueTask(taskUUID string) error {
+	signature, err := server.GetBroker().GetSignature(taskUUID)
+	if err != nil {
+		return err
+	}
+
+	if len(signature.OnSuccess) == 0 {
+		return fmt.Errorf("task had complated, no need to skipped")
+	} else if len(signature.OnSuccess) > 1 {
+		return fmt.Errorf("task success callback > 1")
+	}
+
+	if err := server.GetBackend().SetStateSkipped(signature); err != nil {
+		return fmt.Errorf("Set state to 'skipped' for task %s returned error: %s", signature.UUID, err)
+	}
+
+	var nextRunTask *tasks.Signature
+	for _, successTask := range signature.OnSuccess {
+		// 如果下一个函数以来上一个函数的结果,那么需要连下一个任务一起跳过
+		if successTask.Immutable == false || successTask.ReceivePipe {
+			err = server.GetBackend().SetStateSkipped(successTask)
+			if err != nil {
+				return fmt.Errorf("pipe task skipped failed after previous task skipped, err: %s", err.Error())
+			}
+			continue
+		}
+		nextRunTask = successTask
+		break
+	}
+
+	// 剩余步骤都跳过,任务直接结束
+	if nextRunTask == nil {
+		return nil
+	}
+
+	_, err = server.SendTask(nextRunTask)
+	return err
+}
+
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
 func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Chain) (*result.ChainAsyncResult, error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "SendChain", tracing.ProducerOption(), tracing.MachineryTag, tracing.WorkflowChainTag)
@@ -203,8 +334,24 @@ func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Cha
 	return server.SendChain(chain)
 }
 
+func (server *Server) SendGroupChain(groupInGroup *tasks.GroupInGruop) (string, error) {
+
+	server.backend.InitGroup(groupInGroup.GroupUUID, groupInGroup.TaskUUIDs)
+
+	for _, chain := range groupInGroup.Chains {
+		_, err := server.SendChain(chain)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return groupInGroup.GroupUUID, nil
+}
+
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
+	chainGroup := chain.Group
+	server.backend.InitGroup(chainGroup.GroupUUID, chainGroup.GetUUIDs())
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err

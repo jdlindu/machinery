@@ -2,6 +2,7 @@ package result
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -83,15 +84,17 @@ func (asyncResult *AsyncResult) Touch() ([]reflect.Value, error) {
 		asyncResult.backend.PurgeState(asyncResult.taskState.TaskUUID)
 	}
 
-	if asyncResult.taskState.IsFailure() {
-		return nil, errors.New(asyncResult.taskState.Error)
+	if !asyncResult.taskState.IsCompleted() {
+		return nil, nil
 	}
 
 	if asyncResult.taskState.IsSuccess() {
 		return tasks.ReflectTaskResults(asyncResult.taskState.Results)
+	} else if asyncResult.taskState.IsFailure() {
+		return nil, errors.New(asyncResult.taskState.Error)
+	} else {
+		return nil, fmt.Errorf("task end with state %s", asyncResult.taskState.State)
 	}
-
-	return nil, nil
 }
 
 // Get returns task results (synchronous blocking call)
