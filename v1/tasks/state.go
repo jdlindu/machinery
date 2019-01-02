@@ -37,12 +37,13 @@ type TaskState struct {
 // E.g. UUIDs of all tasks which are used in order to check if all tasks
 // completed successfully or not and thus whether to trigger chord callback
 type GroupMeta struct {
-	Meta           map[string]string
-	GroupUUID      string    `bson:"_id"`
-	TaskUUIDs      []string  `bson:"task_uuids"`
-	ChordTriggered bool      `bson:"chord_triggered"`
-	Lock           bool      `bson:"lock"`
-	CreatedAt      time.Time `bson:"created_at"`
+	Meta            map[string]string
+	ParentGroupUUID string    `bson:"parent_group_uuid"`
+	GroupUUID       string    `bson:"_id"`
+	TaskUUIDs       []string  `bson:"task_uuids"`
+	ChordTriggered  bool      `bson:"chord_triggered"`
+	Lock            bool      `bson:"lock"`
+	CreatedAt       time.Time `bson:"created_at"`
 }
 
 func NewNonExistTaskState(signature *Signature) *TaskState {

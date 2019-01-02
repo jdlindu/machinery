@@ -2,7 +2,6 @@ package exampletasks
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/RichardKnop/machinery/v1/log"
@@ -19,16 +18,18 @@ func LongRunningTask() error {
 	return nil
 }
 
-func Echo(second int, arg string) (string, error) {
-	time.Sleep(time.Duration(second) * time.Second)
-	fmt.Println(arg)
-	if arg == "query" {
-		t := time.Now().Unix()
-		if math.Mod(float64(t), 5) == 0 {
-			return "done", nil
-		} else {
-			return "", fmt.Errorf("task not finish yet")
-		}
-	}
-	return arg, nil
+// 环境初始化
+func InitSetup(ip string) (string, error) {
+	return ip + "环境初始化完毕", nil
+}
+
+// 环境初始化
+func InstallSoft(ip, soft string) (string, error) {
+	return ip + "上安装" + soft + "完成", nil
+}
+
+// 环境检查
+func Check(ip, soft string) (string, error) {
+	fmt.Println(ip, soft)
+	return "环境 ok\n进程 ok", nil
 }

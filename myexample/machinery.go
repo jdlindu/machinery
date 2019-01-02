@@ -177,8 +177,9 @@ func startServer() (*machinery.Server, error) {
 
 	// Register tasks
 	tasks := map[string]interface{}{
-		"long_running_task": exampletasks.LongRunningTask,
-		"echo":              exampletasks.Echo,
+		"init":    exampletasks.InitSetup,
+		"install": exampletasks.InstallSoft,
+		"check":   exampletasks.Check,
 	}
 
 	return server, server.RegisterTasks(tasks)
@@ -217,6 +218,16 @@ func worker() error {
 	return worker.Launch()
 }
 
+func NewInstallTask(ip, soft string) (*tasks.Chain, error) {
+	meta := make(map[string]string)
+	meta["xxx"] = "step meta"
+	signature1 := tasks.NewJob("init", "环境初始化", meta, tasks.NewStringArg(ip))
+	signature1.RetryCount = 2
+	signature2 := tasks.NewJob("install", "发起装包", meta, tasks.NewStringArg(ip), tasks.NewStringArg(soft))
+	signature3 := tasks.NewJob("check", "检查环境", meta, tasks.NewStringArg(ip), tasks.NewStringArg(soft))
+	return tasks.NewChain(map[string]string{"task": "1.1.1.1上架任务", "ip": "2.2.2.2"}, signature1, signature2, signature3)
+}
+
 func send() error {
 
 	server, err := startServer()
@@ -224,25 +235,12 @@ func send() error {
 		return err
 	}
 
-	meta := make(map[string]string)
-	meta["xxx"] = "step meta"
-	signature1 := tasks.NewJob("echo", "环境初始化", meta, tasks.NewIntArg(2), tasks.NewStringArg("初始化参数"))
-	signature1.RetryCount = 10
-	signature2 := tasks.NewJob("echo", "发起装包", meta, tasks.NewIntArg(1), tasks.NewStringArg("query"))
-	signature2.RetryCount = 100
-	signature3 := tasks.NewPipeJob("echo", "装包任务查询", meta, tasks.NewIntArg(5))
-	signature4 := tasks.NewJob("echo", "装包任务查询", meta, tasks.NewIntArg(4))
-	signature4.RetryCount = 100
-	signature5 := tasks.NewPipeJob("echo", "装包任务查询", meta, tasks.NewIntArg(6))
-	signature3.RetryCount = 100
-	signature3.RetryTimeout = 2
-
-	chain, err := tasks.NewChain(map[string]string{"task": "1.1.1.1上架任务", "ip": "1.1.1.1"}, signature1, signature2, signature3)
+	chain, err := NewInstallTask("1.1.1.1", "blob")
 	if err != nil {
 		panic(err)
 	}
-	chain2, err := tasks.NewChain(map[string]string{"task": "1.1.1.1上架任务", "ip": "2.2.2.2"}, signature4, signature5)
 
+	chain2, err := NewInstallTask("2.2.2.2", "blob")
 	if err != nil {
 		panic(err)
 	}

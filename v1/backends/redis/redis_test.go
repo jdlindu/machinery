@@ -40,7 +40,7 @@ func TestGroupCompleted(t *testing.T) {
 		assert.Equal(t, "redigo: nil returned", err.Error())
 	}
 
-	backend.InitGroup(groupUUID, []string{task1.UUID, task2.UUID})
+	backend.InitGroup("", groupUUID, map[string]string{}, []string{task1.UUID, task2.UUID})
 
 	groupCompleted, err = backend.GroupCompleted(groupUUID, 2)
 	if assert.Error(t, err) {

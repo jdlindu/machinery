@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/RichardKnop/machinery/v1/backends/result"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v1/persistents/elasticsearch"
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/RichardKnop/machinery/v1/tracing"
 	"github.com/gomodule/redigo/redis"
@@ -39,6 +40,10 @@ func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Br
 
 // NewServer creates Server instance
 func NewServer(cnf *config.Config) (*Server, error) {
+	err := elasticsearch.InitClient(cnf.ESUrl)
+	if err != nil {
+		panic(err)
+	}
 	broker, err := BrokerFactory(cnf)
 	if err != nil {
 		return nil, err
@@ -337,7 +342,7 @@ func (server *Server) SendChainWithContext(ctx context.Context, chain *tasks.Cha
 func (server *Server) SendGroupChain(groupInGroup *tasks.GroupInGruop) (string, error) {
 
 	fmt.Println(groupInGroup)
-	server.backend.InitGroup(groupInGroup.GroupUUID, groupInGroup.Meta, groupInGroup.TaskUUIDs)
+	server.backend.InitGroup("", groupInGroup.GroupUUID, groupInGroup.Meta, groupInGroup.TaskUUIDs)
 
 	for _, chain := range groupInGroup.Chains {
 		_, err := server.SendChain(chain)
@@ -352,7 +357,7 @@ func (server *Server) SendGroupChain(groupInGroup *tasks.GroupInGruop) (string, 
 // SendChain triggers a chain of tasks
 func (server *Server) SendChain(chain *tasks.Chain) (*result.ChainAsyncResult, error) {
 	chainGroup := chain.Group
-	server.backend.InitGroup(chainGroup.GroupUUID, chainGroup.Meta, chainGroup.GetUUIDs())
+	server.backend.InitGroup(chainGroup.ParentGroupUUID, chainGroup.GroupUUID, chainGroup.Meta, chainGroup.GetUUIDs())
 	_, err := server.SendTask(chain.Tasks[0])
 	if err != nil {
 		return nil, err
@@ -386,7 +391,7 @@ func (server *Server) SendGroup(group *tasks.Group, sendConcurrency int) ([]*res
 
 	meta := make(map[string]string)
 	// Init group
-	server.backend.InitGroup(group.GroupUUID, meta, group.GetUUIDs())
+	server.backend.InitGroup("", group.GroupUUID, meta, group.GetUUIDs())
 
 	// Init the tasks Pending state first
 	for _, signature := range group.Tasks {

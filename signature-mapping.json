@@ -1,0 +1,172 @@
+{
+  "index_patterns": [
+    "machinery-signature"
+  ],
+  "settings": {
+    "number_of_shards": 5,
+    "number_of_replicas": 2
+  },
+  "mappings": {
+    "signature": {
+      "properties": {
+        "Args": {
+          "type": "nested",
+          "properties": {
+            "Name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "Type": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "Value": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
+        "BrokerMessageGroupId": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "ChainCount": {
+          "type": "long"
+        },
+        "ChainUUID": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "ETA": {
+          "type": "date"
+        },
+        "ErrorExit": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "GroupTaskCount": {
+          "type": "long"
+        },
+        "GroupUUID": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "Immutable": {
+          "type": "boolean"
+        },
+        "Meta": {
+          "type": "nested",
+          "properties": {
+            "Key": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "Value": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
+        "Name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "ReceivePipe": {
+          "type": "boolean"
+        },
+        "RetriedTimes": {
+          "type": "long"
+        },
+        "RetryCount": {
+          "type": "long"
+        },
+        "RetryTimeout": {
+          "type": "long"
+        },
+        "RoutingKey": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "Step": {
+          "type": "long"
+        },
+        "StepName": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "TotalStep": {
+          "type": "long"
+        },
+        "UUID": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -59,6 +59,7 @@ type Config struct {
 	AMQP            *AMQPConfig      `yaml:"amqp"`
 	SQS             *SQSConfig       `yaml:"sqs"`
 	Redis           *RedisConfig     `yaml:"redis"`
+	ESUrl           string           `yaml:"es_url"`
 	GCPPubSub       *GCPPubSubConfig `yaml:"-" ignored:"true"`
 	TLSConfig       *tls.Config
 	// NoUnixSignals - when set disables signal handling in machinery

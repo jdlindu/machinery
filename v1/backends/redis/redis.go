@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/RichardKnop/machinery/v1/persistents/elasticsearch"
 	"strings"
 	"time"
 
@@ -41,12 +42,13 @@ func New(cnf *config.Config, host, password, socketPath string, db int) iface.Ba
 }
 
 // InitGroup creates and saves a group meta data object
-func (b *Backend) InitGroup(groupUUID string, meta map[string]string, taskUUIDs []string) error {
+func (b *Backend) InitGroup(parentGroupUUID, groupUUID string, meta map[string]string, taskUUIDs []string) error {
 	groupMeta := &tasks.GroupMeta{
-		Meta:      meta,
-		GroupUUID: groupUUID,
-		TaskUUIDs: taskUUIDs,
-		CreatedAt: time.Now().UTC(),
+		Meta:            meta,
+		ParentGroupUUID: parentGroupUUID,
+		GroupUUID:       groupUUID,
+		TaskUUIDs:       taskUUIDs,
+		CreatedAt:       time.Now().UTC(),
 	}
 
 	encoded, err := json.Marshal(groupMeta)
@@ -60,6 +62,11 @@ func (b *Backend) InitGroup(groupUUID string, meta map[string]string, taskUUIDs 
 	_, err = conn.Do("SET", groupUUID, encoded)
 	if err != nil {
 		return err
+	}
+
+	err = elasticsearch.SaveGroupMeta(groupMeta)
+	if err != nil {
+		log.WARNING.Printf("save group meta to es failed, msg:", err.Error())
 	}
 
 	return b.setExpirationTime(groupUUID)
@@ -209,6 +216,11 @@ func (b *Backend) TriggerChord(groupUUID string) (bool, error) {
 	_, err = conn.Do("SET", groupUUID, encoded)
 	if err != nil {
 		return false, err
+	}
+
+	err = elasticsearch.SaveGroupMeta(groupMeta)
+	if err != nil {
+		log.WARNING.Printf("save group meta to es failed, msg:", err.Error())
 	}
 
 	return true, nil
@@ -379,6 +391,11 @@ func (b *Backend) updateState(taskState *tasks.TaskState) error {
 	_, err = conn.Do("SET", taskState.TaskUUID, encoded)
 	if err != nil {
 		return err
+	}
+
+	err = elasticsearch.SaveTaskStates(taskState)
+	if err != nil {
+		log.WARNING.Printf("save task state to es failed, msg:", err.Error())
 	}
 
 	return b.setExpirationTime(taskState.TaskUUID)

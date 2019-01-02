@@ -3,3 +3,5 @@ broker: 'redis://localhost:6379'
 default_queue: machinery_tasks
 
 result_backend: 'redis://localhost:6379'
+
+es_url: http://127.0.0.1:9200

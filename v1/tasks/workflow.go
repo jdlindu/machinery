@@ -13,9 +13,10 @@ type Chain struct {
 
 // Group creates a set of tasks to be executed in parallel
 type Group struct {
-	Meta      map[string]string
-	GroupUUID string
-	Tasks     []*Signature
+	Meta            map[string]string
+	ParentGroupUUID string
+	GroupUUID       string
+	Tasks           []*Signature
 }
 
 type GroupInGruop struct {
@@ -118,6 +119,7 @@ func NewChainTasks(meta map[string]string, chains ...*Chain) (*GroupInGruop, err
 
 	var taskUUIDs []string
 	for _, chain := range chains {
+		chain.Group.ParentGroupUUID = groupUUID
 		taskUUIDs = append(taskUUIDs, chain.Group.GroupUUID)
 	}
 	return &GroupInGruop{

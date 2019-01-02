@@ -1,0 +1,74 @@
+{
+  "index_patterns": [
+    "machinery-group"
+  ],
+  "settings": {
+    "number_of_shards": 5,
+    "number_of_replicas": 2
+  },
+  "mappings": {
+    "group": {
+      "properties": {
+        "ChordTriggered": {
+          "type": "boolean"
+        },
+        "CreatedAt": {
+          "type": "date"
+        },
+        "GroupUUID": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "Lock": {
+          "type": "boolean"
+        },
+        "Meta": {
+          "type": "nested",
+          "properties": {
+            "Key": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "Value": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
+        "ParentGroupUUID": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "TaskUUIDs": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        }
+      }
+    }
+  }
+}

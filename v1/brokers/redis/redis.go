@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/RichardKnop/machinery/v1/persistents/elasticsearch"
 	"sync"
 	"time"
 
@@ -443,6 +444,11 @@ func (b *Broker) SetSignature(signature *tasks.Signature) error {
 	_, err = conn.Do("SET", key, encoded)
 	if err != nil {
 		return err
+	}
+
+	err = elasticsearch.SaveSignature(signature)
+	if err != nil {
+		log.WARNING.Printf("save signature to es failed, msg:", err.Error())
 	}
 
 	return nil
