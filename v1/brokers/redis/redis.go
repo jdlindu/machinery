@@ -207,7 +207,7 @@ func (b *Broker) Publish(signature *tasks.Signature) error {
 	// Check the ETA signature field, if it is set and it is in the future,
 	// delay the task
 
-	if signature.ETA != nil && signature.ETA.After(time.Now().UTC()) {
+	if signature.ETA != nil && signature.ETA.After(time.Now()) {
 		score := signature.ETA.UnixNano()
 		// 将延迟队列的值从signature替换为taskid,方便从延迟队列剔除任务
 		_, err = conn.Do("ZADD", redisDelayedTasksKey, score, signature.UUID)
@@ -369,7 +369,7 @@ func (b *Broker) nextDelayedTask(key string) (result []byte, err error) {
 			return
 		}
 
-		now := time.Now().UTC().UnixNano()
+		now := time.Now().UnixNano()
 
 		// https://redis.io/commands/zrangebyscore
 		items, err = redis.ByteSlices(conn.Do(

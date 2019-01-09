@@ -168,7 +168,7 @@ func (group *GroupStates) CurrentState() (*TaskState, error) {
 		return nil, fmt.Errorf("task non exists")
 	}
 	for idx, s := range group.States {
-		if idx > 0 && s.IsNonExists() {
+		if idx > 0 && s.IsNotCreated() {
 			return group.States[idx-1], nil
 		}
 	}

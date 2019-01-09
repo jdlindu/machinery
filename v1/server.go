@@ -11,7 +11,9 @@ import (
 	"github.com/RichardKnop/machinery/v1/tracing"
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
+	"github.com/olivere/elastic"
 	"sync"
+	"time"
 
 	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
@@ -26,24 +28,27 @@ type Server struct {
 	broker            brokersiface.Broker
 	backend           backendsiface.Backend
 	prePublishHandler func(*tasks.Signature)
+	esClient          *elastic.Client
 }
 
 // NewServerWithBrokerBackend ...
-func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
+func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend, esClient *elastic.Client) *Server {
 	return &Server{
 		config:          cnf,
 		registeredTasks: make(map[string]interface{}),
 		broker:          brokerServer,
 		backend:         backendServer,
+		esClient:        esClient,
 	}
 }
 
 // NewServer creates Server instance
 func NewServer(cnf *config.Config) (*Server, error) {
-	err := elasticsearch.InitClient(cnf.ESUrl)
+	esClient, err := elastic.NewClient(elastic.SetURL(cnf.ESUrl))
 	if err != nil {
 		panic(err)
 	}
+	elasticsearch.InitClient(esClient)
 	broker, err := BrokerFactory(cnf)
 	if err != nil {
 		return nil, err
@@ -52,7 +57,7 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	// Backend is optional so we ignore the error
 	backend, _ := BackendFactory(cnf)
 
-	srv := NewServerWithBrokerBackend(cnf, broker, backend)
+	srv := NewServerWithBrokerBackend(cnf, broker, backend, esClient)
 
 	return srv, nil
 }
@@ -260,7 +265,7 @@ func (server *Server) CancelTask(taskUUID string) error {
 		if err != nil {
 			return fmt.Errorf("task id %s not found", taskUUID)
 		}
-		taskState = tasks.NewNonExistTaskState(signature)
+		taskState = tasks.NewNotCreatedTaskState(signature)
 	}
 	if !taskState.IsCancelable() {
 		return fmt.Errorf("task state: %s cannot cancel", taskState.State)
@@ -481,4 +486,16 @@ func (server *Server) GetRegisteredTaskNames() []string {
 		i++
 	}
 	return taskNames
+}
+
+func (server *Server) QueryTasksByTag(begin, end time.Time, params map[string]string) ([]elasticsearch.GroupTaskState, error) {
+	return elasticsearch.QueryTasksByTag(begin, end, params)
+}
+
+func (server *Server) QueryTaskByID(groupUUID string) (elasticsearch.GroupTaskState, error) {
+	return elasticsearch.QueryTaskByID(groupUUID)
+}
+
+func (server *Server) QueryChainTaskByID(groupUUID string) (elasticsearch.ChainTaskState, error) {
+	return elasticsearch.QueryChainTaskByID(groupUUID)
 }

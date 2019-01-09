@@ -46,9 +46,10 @@ func (b *Backend) InitGroup(parentGroupUUID, groupUUID string, meta map[string]s
 	groupMeta := &tasks.GroupMeta{
 		Meta:            meta,
 		ParentGroupUUID: parentGroupUUID,
+		TotalStep:       len(taskUUIDs),
 		GroupUUID:       groupUUID,
 		TaskUUIDs:       taskUUIDs,
-		CreatedAt:       time.Now().UTC(),
+		CreatedAt:       time.Now(),
 	}
 
 	encoded, err := json.Marshal(groupMeta)
@@ -161,7 +162,7 @@ func (b *Backend) ChainTaskStates(groupUUID string) (tasks.GroupStates, error) {
 			return groupStates, err
 		} else if err == redis.ErrNil {
 			// chain task 未提交的任务
-			states = append(states, tasks.NewNonExistTaskState(signatures[idx]))
+			states = append(states, tasks.NewNotCreatedTaskState(signatures[idx]))
 		} else {
 			states = append(states, state)
 		}
@@ -395,7 +396,7 @@ func (b *Backend) updateState(taskState *tasks.TaskState) error {
 
 	err = elasticsearch.SaveTaskStates(taskState)
 	if err != nil {
-		log.WARNING.Printf("save task state to es failed, msg:", err.Error())
+		log.WARNING.Printf("save task state to es failed, msg:%s", err.Error())
 	}
 
 	return b.setExpirationTime(taskState.TaskUUID)

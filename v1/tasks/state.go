@@ -18,7 +18,7 @@ const (
 	StateCanceled = "CANCELED"
 	StateSkipped  = "SKIPPED"
 	// chain task not create task yet
-	StateNonExist = "NONEXIST"
+	StateNotCreated = "NOTCREATED"
 )
 
 // TaskState represents a state of a task
@@ -38,21 +38,37 @@ type TaskState struct {
 // completed successfully or not and thus whether to trigger chord callback
 type GroupMeta struct {
 	Meta            map[string]string
-	ParentGroupUUID string    `bson:"parent_group_uuid"`
-	GroupUUID       string    `bson:"_id"`
-	TaskUUIDs       []string  `bson:"task_uuids"`
-	ChordTriggered  bool      `bson:"chord_triggered"`
-	Lock            bool      `bson:"lock"`
-	CreatedAt       time.Time `bson:"created_at"`
+	ParentGroupUUID string   `bson:"parent_group_uuid"`
+	GroupUUID       string   `bson:"_id"`
+	TaskUUIDs       []string `bson:"task_uuids"`
+	//PENDINGTasks    []string  `json:"PendingTasks"`
+	//RECEIVEDTasks   []string  `json:"ReceivedTasks"`
+	//STARTEDTasks    []string  `json:"StartedTasks"`
+	//RETRYTasks      []string  `json:"RetryTasks"`
+	//SUCCESSTasks    []string  `json:"SuccessTasks"`
+	//FAILURETasks    []string  `json:"FailureTasks"`
+	//CANCELEDTasks   []string  `json:"CanceledTasks"`
+	//SKIPPEDTasks    []string  `json:"SkippedTasks"`
+	//NOTCREATEDTasks []string  `json:"NotCreatedTasks"`
+	TotalStep        int       `bson:"total_task"`     // 总步骤数
+	CurrentStepIndex int       `bson:"current_task"`   // 当前步骤数
+	CurrentStep      int       `bson:"current_task"`   // 当前步骤名
+	CurrentStatus    string    `bson:"current_status"` // 任务步骤状态
+	Completed        bool      `bson:"completed"`      // 是否已完成
+	Status           string    `bson:"status"`         // 任务状态
+	ChordTriggered   bool      `bson:"chord_triggered"`
+	Lock             bool      `bson:"lock"`
+	CreatedAt        time.Time `bson:"created_at"`
+	CompletedAt      time.Time `bson:"completed_at"`
 }
 
-func NewNonExistTaskState(signature *Signature) *TaskState {
+func NewNotCreatedTaskState(signature *Signature) *TaskState {
 	return &TaskState{
 		TaskUUID:  signature.UUID,
 		Signature: signature,
 		TaskName:  signature.Name,
-		State:     StateNonExist,
-		CreatedAt: time.Now().UTC(),
+		State:     StateNotCreated,
+		CreatedAt: time.Now(),
 	}
 }
 
@@ -63,7 +79,7 @@ func NewPendingTaskState(signature *Signature) *TaskState {
 		Signature: signature,
 		TaskName:  signature.Name,
 		State:     StatePending,
-		CreatedAt: time.Now().UTC(),
+		CreatedAt: time.Now(),
 	}
 }
 
@@ -95,7 +111,7 @@ func NewSuccessTaskState(signature *Signature, results []*TaskResult) *TaskState
 		TaskName:  signature.Name,
 		State:     StateSuccess,
 		Results:   results,
-		EndAt:     time.Now().UTC(),
+		EndAt:     time.Now(),
 	}
 }
 
@@ -107,7 +123,7 @@ func NewFailureTaskState(signature *Signature, err string) *TaskState {
 		TaskName:  signature.Name,
 		State:     StateFailure,
 		Error:     err,
-		EndAt:     time.Now().UTC(),
+		EndAt:     time.Now(),
 	}
 }
 
@@ -127,7 +143,7 @@ func NewCanceledTaskState(signature *Signature) *TaskState {
 		Signature: signature,
 		TaskName:  signature.Name,
 		State:     StateCanceled,
-		EndAt:     time.Now().UTC(),
+		EndAt:     time.Now(),
 	}
 }
 
@@ -137,7 +153,7 @@ func NewSkippedTaskState(signature *Signature) *TaskState {
 		Signature: signature,
 		TaskName:  signature.Name,
 		State:     StateSkipped,
-		EndAt:     time.Now().UTC(),
+		EndAt:     time.Now(),
 	}
 }
 
@@ -147,8 +163,8 @@ func (taskState *TaskState) IsCompleted() bool {
 	return taskState.IsSuccess() || taskState.IsFailure() || taskState.IsCanceled() || taskState.IsSkipped()
 }
 
-func (taskState *TaskState) IsNonExists() bool {
-	return taskState.State == StateNonExist
+func (taskState *TaskState) IsNotCreated() bool {
+	return taskState.State == StateNotCreated
 }
 
 // IsSuccess returns true if state is SUCCESS

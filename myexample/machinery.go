@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"git.code.oa.com/storage-ops/golib/common/utils"
 	"os"
+	"time"
 
 	"github.com/RichardKnop/machinery/v1"
 	"github.com/RichardKnop/machinery/v1/config"
@@ -10,7 +12,7 @@ import (
 	"github.com/RichardKnop/machinery/v1/tasks"
 	"github.com/urfave/cli"
 
-	exampletasks "github.com/RichardKnop/machinery/myexample/tasks"
+	"github.com/RichardKnop/machinery/myexample/tasks"
 )
 
 var (
@@ -90,6 +92,59 @@ func main() {
 			Action: func(c *cli.Context) error {
 				taskID := c.String("task")
 				if err := queryGroupTask(taskID); err != nil {
+					return cli.NewExitError(err.Error(), 1)
+				}
+				return nil
+			},
+		},
+		{
+			Name:  "queryTaskByID",
+			Usage: "query chain task",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "task",
+					Value: "",
+					Usage: "chain tasks group id",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				taskID := c.String("task")
+				if err := queryTaskByID(taskID); err != nil {
+					return cli.NewExitError(err.Error(), 1)
+				}
+				return nil
+			},
+		},
+		{
+			Name:  "queryChainTaskByID",
+			Usage: "query chain task",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "task",
+					Value: "",
+					Usage: "chain tasks group id",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				taskID := c.String("task")
+				if err := queryChainTask(taskID); err != nil {
+					return cli.NewExitError(err.Error(), 1)
+				}
+				return nil
+			},
+		},
+		{
+			Name:  "queryTasksByTag",
+			Usage: "query group of chain tasks",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "task",
+					Value: "",
+					Usage: "chain tasks group id",
+				},
+			},
+			Action: func(c *cli.Context) error {
+				if err := queryTasks(); err != nil {
 					return cli.NewExitError(err.Error(), 1)
 				}
 				return nil
@@ -294,6 +349,49 @@ func queryGroupTask(UUID string) error {
 	for k, v := range currentStates {
 		fmt.Println(k, v.Signature.Name, v.Signature.StepName, v.State, v.Error, v.EndAt)
 	}
+	return nil
+}
+
+func queryTaskByID(UUID string) error {
+	fmt.Println(UUID)
+	server, err := startServer()
+	if err != nil {
+		return err
+	}
+	data, err := server.QueryTaskByID(UUID)
+	if err != nil {
+		return err
+	}
+
+	utils.PrettyJson(data)
+	return nil
+}
+
+func queryTasks() error {
+	server, err := startServer()
+	if err != nil {
+		return err
+	}
+	data, err := server.QueryTasksByTag(time.Now().Add(-60*time.Minute), time.Now(), map[string]string{"task": "批量上架任务"})
+	if err != nil {
+		return err
+	}
+
+	utils.PrettyJson(data)
+	return nil
+}
+
+func queryChainTask(uuid string) error {
+	server, err := startServer()
+	if err != nil {
+		return err
+	}
+	data, err := server.QueryChainTaskByID(uuid)
+	if err != nil {
+		return err
+	}
+
+	utils.PrettyJson(data)
 	return nil
 }
 

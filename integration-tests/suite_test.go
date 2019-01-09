@@ -285,7 +285,7 @@ func testPanic(server *machinery.Server, t *testing.T) {
 }
 
 func testDelay(server *machinery.Server, t *testing.T) {
-	now := time.Now().UTC()
+	now := time.Now()
 	eta := now.Add(100 * time.Millisecond)
 	task := newDelayTask(eta)
 	asyncResult, err := server.SendTask(task)
@@ -368,7 +368,7 @@ func testSetup(cnf *config.Config) *machinery.Server {
 			panic(errors.New("oops"))
 		},
 		"delay_test": func() (int64, error) {
-			return time.Now().UTC().UnixNano(), nil
+			return time.Now().UnixNano(), nil
 		},
 	}
 	server.RegisterTasks(tasks)

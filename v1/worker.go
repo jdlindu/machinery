@@ -207,7 +207,7 @@ func (worker *Worker) taskRetry(signature *tasks.Signature) error {
 	signature.RetryTimeout = retry.FibonacciNext(signature.RetryTimeout)
 
 	// Delay task by signature.RetryTimeout seconds
-	eta := time.Now().UTC().Add(time.Second * time.Duration(signature.RetryTimeout))
+	eta := time.Now().Add(time.Second * time.Duration(signature.RetryTimeout))
 	signature.ETA = &eta
 
 	log.WARNING.Printf("Task %s failed. Going to retry in %d seconds.", signature.UUID, signature.RetryTimeout)
@@ -225,7 +225,7 @@ func (worker *Worker) retryTaskIn(signature *tasks.Signature, retryIn time.Durat
 	}
 
 	// Delay task by retryIn duration
-	eta := time.Now().UTC().Add(retryIn)
+	eta := time.Now().Add(retryIn)
 	signature.ETA = &eta
 
 	log.WARNING.Printf("Task %s failed. Going to retry in %.0f seconds.", signature.UUID, retryIn.Seconds())

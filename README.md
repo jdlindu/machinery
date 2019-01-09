@@ -566,7 +566,7 @@ You can delay a task by setting the `ETA` timestamp field on the task signature.
 
 ```go
 // Delay the task by 5 seconds
-eta := time.Now().UTC().Add(time.Second * 5)
+eta := time.Now().Add(time.Second * 5)
 signature.ETA = &eta
 ```
 

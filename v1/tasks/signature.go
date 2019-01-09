@@ -9,9 +9,9 @@ import (
 
 // Arg represents a single argument passed to invocation fo a task
 type Arg struct {
-	Name  string      `bson:"name"`
-	Type  string      `bson:"type"`
-	Value interface{} `bson:"value"`
+	Name  string      `bson:"name" json:"name"`
+	Type  string      `bson:"type" json:"type"`
+	Value interface{} `bson:"value" json:"value"`
 }
 
 // Headers represents the headers which should be used to direct the task

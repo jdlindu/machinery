@@ -6,67 +6,113 @@
     "number_of_shards": 5,
     "number_of_replicas": 2
   },
-  "mappings": {
-    "group": {
-      "properties": {
-        "ChordTriggered": {
-          "type": "boolean"
-        },
-        "CreatedAt": {
-          "type": "date"
-        },
-        "GroupUUID": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
+  "mappings" : {
+    "group" : {
+      "properties" : {
+        "args" : {
+          "type": "nested",
+          "properties" : {
+            "name" : {
+              "type" : "keyword"
+            },
+            "type" : {
+              "type" : "keyword"
+            },
+            "value" : {
+              "type" : "keyword"
             }
           }
         },
-        "Lock": {
-          "type": "boolean"
+        "chain_count" : {
+          "type" : "long"
         },
-        "Meta": {
+        "chain_uuid" : {
+          "type" : "keyword"
+        },
+        "created_at" : {
+          "type" : "date"
+        },
+        "end_at" : {
+          "type" : "date"
+        },
+        "error" : {
+          "type" : "keyword"
+        },
+        "error_exit" : {
+          "type" : "keyword"
+        },
+        "group_task_count" : {
+          "type" : "long"
+        },
+        "group_uuid" : {
+          "type" : "keyword"
+        },
+        "meta" : {
           "type": "nested",
-          "properties": {
-            "Key": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
+          "properties" : {
+            "key" : {
+              "type" : "keyword"
+            },
+            "value" : {
+              "type" : "keyword"
+            }
+          }
+        },
+        "name" : {
+          "type" : "keyword"
+        },
+        "receive_pipe" : {
+          "type" : "boolean"
+        },
+        "results" : {
+          "type": "nested",
+          "properties" : {
+            "Type" : {
+              "type" : "keyword"
             },
             "Value": {
               "type": "text",
               "fields": {
                 "keyword": {
                   "type": "keyword",
-                  "ignore_above": 256
+                  "ignore_above": 25600
                 }
               }
             }
           }
         },
-        "ParentGroupUUID": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "retried_times" : {
+          "type" : "long"
         },
-        "TaskUUIDs": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "retry_count" : {
+          "type" : "long"
+        },
+        "retry_timeout" : {
+          "type" : "long"
+        },
+        "routing_key" : {
+          "type" : "keyword"
+        },
+        "state" : {
+          "type" : "keyword"
+        },
+        "step" : {
+          "type" : "long"
+        },
+        "step_name" : {
+          "type" : "keyword"
+        },
+        "task_name" : {
+          "type" : "keyword"
+        },
+        "task_uuid" : {
+          "type" : "keyword"
+        },
+        "total_step" : {
+          "type" : "long"
+        },
+        "uuid" : {
+          "type" : "keyword"
         }
       }
     }

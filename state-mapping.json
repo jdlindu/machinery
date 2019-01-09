@@ -9,227 +9,110 @@
   "mappings": {
     "state": {
       "properties": {
-        "Args": {
+        "args": {
           "type": "nested",
           "properties": {
-            "Name": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
+            "name": {
+              "type": "keyword"
             },
-            "Type": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
+            "type": {
+              "type": "keyword"
             },
-            "Value": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
+            "value": {
+              "type": "keyword"
             }
           }
         },
-        "BrokerMessageGroupId": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
-        },
-        "ChainCount": {
+        "chain_count": {
           "type": "long"
         },
-        "ChainUUID": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "chain_uuid": {
+          "type": "keyword"
         },
-        "CreatedAt": {
+        "created_at": {
           "type": "date"
         },
-        "ETA": {
+        "end_at": {
           "type": "date"
         },
-        "EndAt": {
-          "type": "date"
+        "error": {
+          "type": "keyword"
         },
-        "Error": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "error_exit": {
+          "type": "keyword"
         },
-        "ErrorExit": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
-        },
-        "GroupTaskCount": {
+        "group_task_count": {
           "type": "long"
         },
-        "GroupUUID": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
+        "group_uuid": {
+          "type": "keyword"
+        },
+        "meta": {
+          "type": "nested",
+          "properties": {
+            "key": {
+              "type": "keyword"
+            },
+            "value": {
+              "type": "keyword"
             }
           }
         },
-        "Immutable": {
+        "name": {
+          "type": "keyword"
+        },
+        "receive_pipe": {
           "type": "boolean"
         },
-        "Results": {
+        "results": {
           "type": "nested",
           "properties": {
             "Type": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
+              "type": "keyword"
             },
             "Value": {
               "type": "text",
               "fields": {
                 "keyword": {
                   "type": "keyword",
-                  "ignore_above": 256
+                  "ignore_above": 25600
                 }
               }
             }
           }
         },
-        "Meta": {
-          "type": "nested",
-          "properties": {
-            "Key": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
-            },
-            "Value": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
-            }
-          }
-        },
-        "Name": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
-        },
-        "ReceivePipe": {
-          "type": "boolean"
-        },
-        "RetriedTimes": {
+        "retried_times": {
           "type": "long"
         },
-        "RetryCount": {
+        "retry_count": {
           "type": "long"
         },
-        "RetryTimeout": {
+        "retry_timeout": {
           "type": "long"
         },
-        "RoutingKey": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "routing_key": {
+          "type": "keyword"
         },
-        "State": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "state": {
+          "type": "keyword"
         },
-        "Step": {
+        "step": {
           "type": "long"
         },
-        "StepName": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "step_name": {
+          "type": "keyword"
         },
-        "TaskName": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "task_name": {
+          "type": "keyword"
         },
-        "TaskUUID": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "task_uuid": {
+          "type": "keyword"
         },
-        "TotalStep": {
+        "total_step": {
           "type": "long"
         },
-        "UUID": {
-          "type": "text",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256
-            }
-          }
+        "uuid": {
+          "type": "keyword"
         }
       }
     }
